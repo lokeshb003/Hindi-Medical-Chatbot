@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heal Field</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            padding: 20px;
+            background-color: #ffffff; /* வெள்ளை உள்ளிடும் பின்பலம் */
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #007bff; /* நீல தலைப்பு */
+            margin-bottom: 20px;
+        }
+
+        #chat-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ced4da; /* வெள்ளைக்கு அமைந்த பட்டை */
+            border-radius: 8px;
+            background-color: #f1f3f5; /* வெள்ளை-நீல பின்பலம் */
+            height: 300px;
+            overflow-y: scroll;
+        }
+
+        .message-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .user-message {
+            justify-content: flex-end; /* பயனர் செய்திகளை வலப்படுத்த */
+            margin-left: auto; /* பயனர் செய்திகளை இடம்பெற */
+        }
+
+        .chatbot-message {
+            justify-content: flex-end; /* செய்திகளை வலப்படுத்த */
+            margin-right: auto; /* செய்திகளை இடம்பெற */
+        }
+
+        .message-bubble {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background-color: #007bff; /* பயனர் செய்திகளுக்கான நீல பின்பலம் */
+            color: #ffffff; /* வெள்ளை உரிய வர்ணம் */
+        }
+
+        #text-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ced4da; /* வெள்ளைக்கு அமைந்த பட்டை */
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: #ffffff; /* வெள்ளை உள்ளிடும் பின்பலம் */
+            color: #495057; /* உரிய பட்டை வர்ணம் */
+            margin-right: 10px; /* உள்ளீட்டுப் பெட்டியும் பட்டுகளும் */
+            height: 40px; /* உள்ளீடு பெட்டி உயரம் */
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .button-container button {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+            width: 100px; /* பொது அளவு */
+        }
+
+        .button-container button:hover {
+            background-color: #0056b3; /* புதிய நீலம் */
+        }
+
+        .user-avatar,
+        .chatbot-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .user-avatar {
+            background-color: #007bff; /* பயனர் வட்டம் */
+        }
+
+        .chatbot-avatar {
+            background-color: #28a745; /* செய்தி வட்டம் */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Heal Field</h1>
+        <div id="chat-container"></div>
+
+        <div class="input-container">
+            <input type="text" id="text-input" placeholder="आपका संदेश यहाँ टाइप करें">
+            <div class="button-container">
+                <button id="submit-text"><i class="fas fa-paper-plane"></i></button>
+                <button id="start-recognition"><i class="fas fa-microphone-alt"></i></button>
+            </div>
+        </div>
+    </div>
+    <!-- Audio element for speech response playback -->
+    <audio id="speechOutput" controls style="display: none;"></audio>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const textInput = document.getElementById('text-input');
+        const submitTextBtn = document.getElementById('submit-text');
+    
+        function preprocessInput(inputText) {
+            const keywordMap = {
+                'hailo': 'हैलो',
+                'sahaj nahin':'सहज नहीं',
+                'aisa kuchh nahin hai.':'ऐसा कुछ नहीं है।',
+                'haan yah hai':'हां यह है',
+                'aisa koee nahin hai':'ऐसा कोई नहीं है',
+                'beemaaree': 'बीमारी',
+                'dhanyavaad':'धन्यवाद',
+                'peeth dard ka kaaran':'पीठ दर्द का कारण',
+                'peeth dard ke lakshan':'पीठ दर्द के लक्षण',
+                'peeth dard kee rokathaam':'पीठ दर्द की रोकथाम',
+                'peeth dard kee dava':'पीठ दर्द की दवा',
+                'khaady vishaaktata ka kaaran banata hai':'खाद्य विषाक्तता का कारण बनता है',
+                'khaady vishaaktata ke lakshan':'खाद्य विषाक्तता के लक्षण',
+                'khaady vishaaktata kee rokathaam':'खाद्य विषाक्तता की रोकथाम',
+                'phood poijaning medisin':'फूड पॉइजनिंग मेडिसिन',
+                'sookhee aankhen kaaran':'सूखी आंखें कारण',
+                'sookhee aankhen lakshan':'सूखी आंखें लक्षण',
+                'sookhee aankhen rokathaam':'सूखी आंखें रोकथाम',
+                'sookhee aankhen chikitsa':'सूखी आंखें चिकित्सा',
+                'saamaany sardee ke kaaran':'सामान्य सर्दी के कारण',
+                'saamaany sardee ke lakshan':'सामान्य सर्दी के लक्षण',
+                'saamaany sardee kee rokathaam':'सामान्य सर्दी की रोकथाम',
+                'saamaany sardee chikitsa':'सामान्य सर्दी चिकित्सा'
+                // Add more mappings as needed
+            };
+    
+            // Custom function for case-insensitive replacement
+            function replaceAll(str, find, replace) {
+                return str.replace(new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), replace);
+            }
+    
+            // Iterate through the keywordMap and perform case-insensitive replacements
+            for (const [key, value] of Object.entries(keywordMap)) {
+                inputText = replaceAll(inputText, key, value);
+            }
+    
+            return inputText;
+        }
+    
+        function sendMessage(message, isUserMessage) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-container');
+    
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            messageBubble.textContent = message;
+    
+            if (isUserMessage) {
+                messageContainer.classList.add('user-message');
+                const userAvatar = document.createElement('div');
+                userAvatar.classList.add('user-avatar');
+                messageContainer.appendChild(userAvatar);
+            } else {
+                messageContainer.classList.add('chatbot-message');
+                const chatbotAvatar = document.createElement('div');
+                chatbotAvatar.classList.add('chatbot-avatar');
+                messageContainer.appendChild(chatbotAvatar);
+            }
+    
+            messageContainer.appendChild(messageBubble);
+            chatContainer.appendChild(messageContainer);
+    
+            fetch('/speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseMessage = document.createElement('div');
+                responseMessage.classList.add('message-container');
+                responseMessage.classList.add('chatbot-message');
+    
+                const responseBubble = document.createElement('div');
+                responseBubble.classList.add('message-bubble');
+                responseBubble.textContent = `प्रतिक्रिया: ${data.response_text}`;
+    
+                const chatbotAvatar = document.createElement('div');
+                chatbotAvatar.classList.add('chatbot-avatar');
+    
+                responseMessage.appendChild(chatbotAvatar);
+                responseMessage.appendChild(responseBubble);
+                chatContainer.appendChild(responseMessage);
+    
+                const utterance = new SpeechSynthesisUtterance(data.response_text);
+                utterance.lang = 'hi-IN';
+                speechSynthesis.speak(utterance);
+            });
+        }
+    
+        submitTextBtn.addEventListener('click', function() {
+            let message = textInput.value.trim();
+            if (message) {
+                message = preprocessInput(message);
+                sendMessage(message, true);
+                textInput.value = '';
+            }
+        });
+    
+        document.getElementById('start-recognition').addEventListener('click', function() {
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'hi-IN';
+            recognition.start();
+    
+            recognition.onresult = function(event) {
+                const speechToText = event.results[0][0].transcript;
+                textInput.value = speechToText;
+                textInput.focus();
+                submitTextBtn.click();
+            };
+        });
+    </script>
+    </body>
+</html>
